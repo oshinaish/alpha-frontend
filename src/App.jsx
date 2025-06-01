@@ -1,79 +1,97 @@
-
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 
 function App() {
   const [file, setFile] = useState(null);
-  const [transactions, setTransactions] = useState([]);
-  const [categories, setCategories] = useState({});
-  const [loading, setLoading] = useState(false);
+  const [lines, setLines] = useState([]);
+  const [memory, setMemory] = useState({});
+  const [categorized, setCategorized] = useState({});
+
+  const categories = ["Dining", "Travel", "Groceries", "Utilities", "Shopping", "Rent", "Others"];
 
   useEffect(() => {
-    axios.get("https://budget-pdf-backend.onrender.com/get-categories")
-      .then(res => {
-        if (res.data.status === "success") {
-          setCategories(res.data.memory);
-        }
+    fetch("https://alpha-backened.onrender.com/get-categories")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success") setMemory(data.memory || {});
       });
   }, []);
 
-  const handleFileUpload = async () => {
-    if (!file) return;
+  const handleFileChange = (e) => setFile(e.target.files[0]);
+
+  const uploadFile = async () => {
+    if (!file) return alert("Upload a PDF first!");
 
     const formData = new FormData();
     formData.append("file", file);
-    setLoading(true);
 
-    const res = await axios.post("https://budget-pdf-backend.onrender.com/upload-pdf", formData);
-    if (res.data.status === "success") {
-      setTransactions(res.data.raw_transactions);
+    const res = await fetch("https://alpha-backened.onrender.com/upload-pdf", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (data.status === "success") {
+      setLines(data.raw_transactions);
+      const initialCategorized = {};
+      data.raw_transactions.forEach((line) => {
+        initialCategorized[line] = memory[line] || "";
+      });
+      setCategorized(initialCategorized);
+    } else {
+      alert("Error extracting PDF");
     }
-
-    setLoading(false);
   };
 
   const handleCategoryChange = async (line, category) => {
-    const res = await axios.post("https://budget-pdf-backend.onrender.com/save-category", { line, category });
-    if (res.data.status === "success") {
-      setCategories(prev => ({ ...prev, [line]: category }));
-    }
+    setCategorized((prev) => ({ ...prev, [line]: category }));
+
+    await fetch("https://alpha-backened.onrender.com/save-category", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ line, category }),
+    });
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Alpha Budget Uploader</h1>
-      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
-      <button onClick={handleFileUpload} disabled={loading}>
-        {loading ? "Uploading..." : "Upload PDF"}
-      </button>
+    <div style={{ padding: "20px", fontFamily: "Arial" }}>
+      <h2>Upload your bank statement</h2>
+      <input type="file" accept=".pdf" onChange={handleFileChange} />
+      <button onClick={uploadFile} style={{ marginLeft: "10px" }}>Upload</button>
 
-      {transactions.length > 0 && (
-        <table border="1" style={{ marginTop: "20px", width: "100%" }}>
-          <thead>
-            <tr>
-              <th>Transaction</th>
-              <th>Category</th>
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.map((line, index) => (
-              <tr key={index}>
-                <td>{line}</td>
-                <td>
-                  <input
-                    type="text"
-                    value={categories[line] || ""}
-                    onChange={(e) => handleCategoryChange(line, e.target.value)}
-                    placeholder="Enter category"
-                  />
-                </td>
+      {lines.length > 0 && (
+        <div style={{ marginTop: "20px" }}>
+          <h3>Transactions</h3>
+          <table border="1" cellPadding="10" cellSpacing="0">
+            <thead>
+              <tr>
+                <th>Transaction</th>
+                <th>Category</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {lines.map((line, idx) => (
+                <tr key={idx}>
+                  <td>{line}</td>
+                  <td>
+                    <select
+                      value={categorized[line] || ""}
+                      onChange={(e) => handleCategoryChange(line, e.target.value)}
+                    >
+                      <option value="">Select Category</option>
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
 }
 
 export default App;
+
