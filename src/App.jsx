@@ -40,7 +40,7 @@ function App() {
 
   // Fetch categorization memory on component mount
   useEffect(() => {
-    axios.get("https://alpha-backend.onrender.com/get-categories")
+    axios.get("https://alpha-backened.onrender.com/get-categories")
       .then((res) => {
         if (res.data.status === "success") {
           setMemory(res.data.memory || {});
@@ -109,7 +109,7 @@ function App() {
     formData.append("file", file);
 
     try {
-      const res = await axios.post("https://alpha-backend.onrender.com/upload-pdf", formData, {
+      const res = await axios.post("https://alpha-backened.onrender.com/upload-pdf", formData, {
         headers: {
           'Content-Type': 'multipart/form-data' // Important for FormData
         }
@@ -134,7 +134,7 @@ function App() {
     setCategorized((prev) => ({ ...prev, [description]: category }));
 
     try {
-      await axios.post("https://alpha-backend.onrender.com/save-category", {
+      await axios.post("https://alpha-backened.onrender.com/save-category", {
         description: description, // Send description as the key
         category: category,
       }, {
